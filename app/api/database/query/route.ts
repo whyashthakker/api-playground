@@ -166,10 +166,20 @@ export async function POST(request: NextRequest) {
     
   } catch (error: any) {
     console.error('Error executing query:', error);
+    
+    // Check if it's a column name error and provide helpful message
+    let errorMessage = error.message || 'Query execution failed';
+    let helpfulMessage = 'There was an error executing your query. Check the syntax!';
+    
+    if (error.code === '42703' && error.message?.includes('does not exist')) {
+      helpfulMessage = 'Column name error: PostgreSQL requires quoted identifiers for camelCase columns. Use "tableNumber" instead of tableNumber, or "totalPrice" instead of totalPrice. Check the table schema for exact column names.';
+    }
+    
     return NextResponse.json({
       success: false,
-      error: error.message || 'Query execution failed',
-      message: 'There was an error executing your query. Check the syntax!'
+      error: errorMessage,
+      message: helpfulMessage,
+      hint: error.code === '42703' ? 'Tip: Use double quotes around camelCase column names like "tableNumber", "totalPrice", "customerName", etc.' : undefined
     }, { status: 500 });
   }
 }

@@ -81,10 +81,10 @@ export async function GET(request: NextRequest) {
           data_type,
           is_nullable,
           column_default,
-          CASE 
-            WHEN column_name ~ '^[A-Z]' THEN '"' || column_name || '"'
-            ELSE column_name
-          END as quoted_column_name
+        CASE 
+          WHEN column_name ~ '[A-Z]' THEN '"' || column_name || '"'
+          ELSE column_name
+        END as quoted_column_name
         FROM information_schema.columns
         WHERE table_schema = 'public'
           AND table_name IN (${existingTableNames.map(t => `'${t}'`).join(', ')})

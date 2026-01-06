@@ -208,8 +208,6 @@ export default function DatabasePage() {
 
       const data = await res.json();
       
-      console.log('Query response:', data); // Debug log
-      
       if (data.success) {
         // Check if this is a preview (DELETE/UPDATE/INSERT)
         if (data.isPreview) {
@@ -223,14 +221,7 @@ export default function DatabasePage() {
           setResults([]);
         } else {
           // Regular SELECT query
-          if (data.data) {
-            const resultArray = Array.isArray(data.data) ? data.data : [data.data];
-            console.log('Setting results:', resultArray); // Debug log
-            setResults(resultArray);
-          } else {
-            console.log('No data in response'); // Debug log
-            setResults([]);
-          }
+          setResults(Array.isArray(data.data) ? data.data : [data.data]);
           setPreviewInfo(null);
         }
         setError(null);
@@ -281,6 +272,12 @@ export default function DatabasePage() {
       name: 'Filter with WHERE',
       query: "SELECT * FROM orders WHERE status = 'CONFIRMED';",
       description: 'Filter rows based on conditions'
+    },
+    {
+      name: 'Filter by Table Number',
+      query: 'SELECT * FROM orders WHERE "tableNumber" = 5;',
+      description: 'Filter using camelCase column (must use quotes)',
+      solution: 'Note: Use "tableNumber" with quotes, not tableNumber'
     },
     {
       name: 'Sort Results',
@@ -514,59 +511,61 @@ export default function DatabasePage() {
                 <div className="mt-4 p-4 bg-red-50 border border-red-200 rounded-lg">
                   <p className="text-red-700 font-semibold">❌ Error:</p>
                   <p className="text-red-600 text-sm mt-1">{error}</p>
+                  {error.includes('does not exist') && (
+                    <div className="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded">
+                      <p className="text-yellow-800 font-semibold text-sm mb-1">💡 Tip:</p>
+                      <p className="text-yellow-700 text-xs">
+                        PostgreSQL requires quoted identifiers for camelCase columns. Use <code className="bg-yellow-100 px-1 rounded">"tableNumber"</code> instead of <code className="bg-yellow-100 px-1 rounded">tableNumber</code>. 
+                        Click on a table above to see the exact column names with proper quoting.
+                      </p>
+                    </div>
+                  )}
                 </div>
               )}
             </div>
-          </div>
-        </div>
 
-        {/* Results Display */}
-        {!loading && !error && !previewInfo && (
-          <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-black">
-                📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
-              </h2>
-            </div>
-            {results.length === 0 ? (
-              <div className="text-center py-8 text-gray-500">
-                <p>Query executed successfully but returned no rows.</p>
-                <p className="text-sm mt-2">Try a different query or check if the table has data.</p>
-              </div>
-            ) : (
-              <div className="overflow-x-auto">
-                <table className="w-full border-collapse">
-                  <thead>
-                    <tr className="bg-gray-100">
-                      {results[0] && Object.keys(results[0]).map((key) => (
-                        <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
-                          {key}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {results.map((row, idx) => (
-                      <tr key={idx} className="hover:bg-gray-50">
-                        {row && Object.values(row).map((value: any, colIdx) => (
-                          <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
-                            {value === null ? (
-                              <span className="text-gray-400 italic">NULL</span>
-                            ) : typeof value === 'object' ? (
-                              JSON.stringify(value)
-                            ) : (
-                              String(value)
-                            )}
-                          </td>
+            {/* Results Display */}
+            {results.length > 0 && (
+              <div className="bg-white rounded-lg p-6 shadow-lg">
+                <div className="flex justify-between items-center mb-4">
+                  <h2 className="text-xl font-bold text-black">
+                    📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
+                  </h2>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="bg-gray-100">
+                        {Object.keys(results[0] || {}).map((key) => (
+                          <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
+                            {key}
+                          </th>
                         ))}
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {results.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-gray-50">
+                          {Object.values(row).map((value: any, colIdx) => (
+                            <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
+                              {value === null ? (
+                                <span className="text-gray-400 italic">NULL</span>
+                              ) : typeof value === 'object' ? (
+                                JSON.stringify(value)
+                              ) : (
+                                String(value)
+                              )}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
           </div>
-        )}
+        </div>
 
         {/* Available Tables */}
         <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
@@ -699,6 +698,46 @@ export default function DatabasePage() {
           </div>
         </div>
 
+        {/* Results Display */}
+        {results.length > 0 && (
+          <div className="bg-white rounded-lg p-6 shadow-lg">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-black">
+                📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
+              </h2>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="bg-gray-100">
+                    {Object.keys(results[0] || {}).map((key) => (
+                      <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
+                        {key}
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
+                <tbody>
+                  {results.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-gray-50">
+                      {Object.values(row).map((value: any, colIdx) => (
+                        <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
+                          {value === null ? (
+                            <span className="text-gray-400 italic">NULL</span>
+                          ) : typeof value === 'object' ? (
+                            JSON.stringify(value)
+                          ) : (
+                            String(value)
+                          )}
+                        </td>
+                      ))}
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
 
         {/* Educational Content */}
         <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 shadow-lg">
