@@ -3,12 +3,13 @@ import { prisma } from "@/lib/prisma";
 
 export async function GET(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const brick = await prisma.legoBrick.findUnique({
       where: {
-        id: params.id
+        id
       }
     });
 
@@ -37,14 +38,15 @@ export async function GET(
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const body = await request.json();
     const { name, color, size, shape, quantity, description } = body;
 
     const existingBrick = await prisma.legoBrick.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!existingBrick) {
@@ -57,7 +59,7 @@ export async function PUT(
 
     const updatedBrick = await prisma.legoBrick.update({
       where: {
-        id: params.id
+        id
       },
       data: {
         name: name || existingBrick.name,
@@ -86,11 +88,12 @@ export async function PUT(
 
 export async function DELETE(
   request: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const brick = await prisma.legoBrick.findUnique({
-      where: { id: params.id }
+      where: { id }
     });
 
     if (!brick) {
@@ -103,7 +106,7 @@ export async function DELETE(
 
     await prisma.legoBrick.delete({
       where: {
-        id: params.id
+        id
       }
     });
 

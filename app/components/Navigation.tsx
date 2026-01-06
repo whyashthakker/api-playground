@@ -9,6 +9,7 @@ export default function Navigation() {
   const navItems = [
     { href: '/', label: '🧱 Lego Collection', description: 'Basic CRUD operations' },
     { href: '/restaurant', label: '🍽️ Restaurant', description: 'API as a waiter concept' },
+    { href: '/database', label: '🗄️ Database', description: 'Learn SQL interactively' },
     { href: '/docs', label: '📚 Docs', description: 'Learn about REST APIs' }
   ];
 
