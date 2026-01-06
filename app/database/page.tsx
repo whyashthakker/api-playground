@@ -11,8 +11,19 @@ interface TableColumn {
   default: string | null;
 }
 
+interface TableMetadata {
+  model: string;
+  description: string;
+  category: string;
+}
+
+interface TableInfo {
+  columns: TableColumn[];
+  metadata: TableMetadata;
+}
+
 interface TableSchema {
-  [tableName: string]: TableColumn[];
+  [tableName: string]: TableInfo;
 }
 
 interface QueryStep {
@@ -28,6 +39,7 @@ export default function DatabasePage() {
   const [error, setError] = useState<string | null>(null);
   const [schema, setSchema] = useState<TableSchema>({});
   const [selectedTable, setSelectedTable] = useState<string | null>(null);
+  const [expandedTable, setExpandedTable] = useState<string | null>(null);
   const [querySteps, setQuerySteps] = useState<QueryStep[]>([]);
   const [activeStep, setActiveStep] = useState<number | null>(null);
   const [executionTime, setExecutionTime] = useState<number | null>(null);
@@ -547,45 +559,126 @@ export default function DatabasePage() {
             {Object.keys(schema).length === 0 ? (
               <p className="text-gray-500">Loading tables...</p>
             ) : (
-              Object.entries(schema).map(([tableName, columns]) => (
+              Object.entries(schema).map(([tableName, tableInfo]) => {
+                const columns = tableInfo.columns || [];
+                const metadata = tableInfo.metadata || { model: '', description: '', category: '' };
+                
+                return (
                 <div
                   key={tableName}
-                  className={`border rounded-lg p-4 cursor-pointer transition-all ${
+                  className={`border rounded-lg transition-all ${
                     selectedTable === tableName
                       ? 'border-blue-500 bg-blue-50'
                       : 'border-gray-200 hover:border-blue-300 hover:shadow-md'
-                  }`}
-                  onClick={() => {
-                    setSelectedTable(tableName);
-                    // Insert table name into query if FROM is present
-                    if (query.toUpperCase().includes('FROM')) {
-                      const fromMatch = query.match(/FROM\s+["']?[\w_]+["']?/i);
-                      if (fromMatch) {
-                        setQuery(query.replace(/FROM\s+["']?[\w_]+["']?/i, `FROM ${tableName}`));
-                      }
-                    } else {
-                      // Add FROM clause if not present
-                      if (!query.trim().endsWith(';')) {
-                        setQuery(query + ` FROM ${tableName};`);
-                      } else {
-                        setQuery(query.replace(/;/, ` FROM ${tableName};`));
-                      }
-                    }
-                  }}
+                  } ${expandedTable === tableName ? 'col-span-full' : ''}`}
                 >
-                  <h3 className="font-semibold text-black mb-2">{tableName}</h3>
-                  <p className="text-xs text-gray-500 mb-2">{columns.length} columns</p>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setQuery(`SELECT * FROM ${tableName} LIMIT 10;`);
+                  <div
+                    className="p-4 cursor-pointer"
+                    onClick={() => {
+                      setSelectedTable(tableName);
+                      setExpandedTable(expandedTable === tableName ? null : tableName);
+                      // Insert table name into query if FROM is present
+                      if (query.toUpperCase().includes('FROM')) {
+                        const fromMatch = query.match(/FROM\s+["']?[\w_]+["']?/i);
+                        if (fromMatch) {
+                          setQuery(query.replace(/FROM\s+["']?[\w_]+["']?/i, `FROM ${tableName}`));
+                        }
+                      } else {
+                        // Add FROM clause if not present
+                        if (!query.trim().endsWith(';')) {
+                          setQuery(query + ` FROM ${tableName};`);
+                        } else {
+                          setQuery(query.replace(/;/, ` FROM ${tableName};`));
+                        }
+                      }
                     }}
-                    className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 w-full"
                   >
-                    Use Table
-                  </button>
+                    <div className="flex justify-between items-center mb-2">
+                      <div>
+                        <h3 className="font-semibold text-black">{tableName}</h3>
+                        {metadata.description && (
+                          <p className="text-xs text-gray-500 mt-1">{metadata.description}</p>
+                        )}
+                      </div>
+                      <span className="text-xs text-gray-500">{columns.length} columns</span>
+                    </div>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setQuery(`SELECT * FROM ${tableName} LIMIT 10;`);
+                      }}
+                      className="text-xs bg-blue-500 text-white px-3 py-1 rounded hover:bg-blue-600 w-full"
+                    >
+                      Use Table
+                    </button>
+                  </div>
+                  
+                  {/* Expanded Schema View */}
+                  {expandedTable === tableName && (
+                    <div className="border-t border-gray-200 p-4 bg-gray-50">
+                      <div className="mb-3">
+                        <h4 className="font-semibold text-black mb-1">Table Schema</h4>
+                        {metadata.model && (
+                          <p className="text-xs text-gray-600">Model: <code className="text-blue-600">{metadata.model}</code></p>
+                        )}
+                        {metadata.description && (
+                          <p className="text-xs text-gray-600 mt-1">{metadata.description}</p>
+                        )}
+                      </div>
+                      <div className="space-y-2">
+                        {columns.map((col) => (
+                          <div
+                            key={col.name}
+                            className="flex items-center justify-between p-2 bg-white rounded border border-gray-200 hover:border-blue-300 hover:bg-blue-50 transition-colors"
+                          >
+                            <div className="flex items-center gap-2 flex-1">
+                              <code className="text-sm font-mono text-blue-600 font-semibold">
+                                {col.quotedName || col.name}
+                              </code>
+                              <span className="text-xs text-gray-500">
+                                {col.type}
+                              </span>
+                              {!col.nullable && (
+                                <span className="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-semibold">
+                                  NOT NULL
+                                </span>
+                              )}
+                              {col.default && (
+                                <span className="text-xs text-gray-400">
+                                  default: {col.default}
+                                </span>
+                              )}
+                            </div>
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                const colName = col.quotedName || col.name;
+                                if (query.toUpperCase().includes('SELECT')) {
+                                  const selectMatch = query.match(/SELECT\s+(.+?)\s+FROM/i);
+                                  if (selectMatch && selectMatch[1] !== '*') {
+                                    const currentCols = selectMatch[1];
+                                    if (!currentCols.includes(col.name) && !currentCols.includes(colName)) {
+                                      setQuery(query.replace(/SELECT\s+(.+?)\s+FROM/i, `SELECT ${currentCols}, ${colName} FROM`));
+                                    }
+                                  } else if (selectMatch && selectMatch[1] === '*') {
+                                    setQuery(query.replace(/SELECT\s+\*\s+FROM/i, `SELECT ${colName} FROM`));
+                                  }
+                                } else {
+                                  setQuery(`SELECT ${colName} FROM ${tableName};`);
+                                }
+                              }}
+                              className="text-xs bg-green-500 text-white px-2 py-1 rounded hover:bg-green-600 ml-2"
+                            >
+                              Add
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))
+                );
+              })
             )}
           </div>
         </div>
