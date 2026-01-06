@@ -208,6 +208,8 @@ export default function DatabasePage() {
 
       const data = await res.json();
       
+      console.log('Query response:', data); // Debug log
+      
       if (data.success) {
         // Check if this is a preview (DELETE/UPDATE/INSERT)
         if (data.isPreview) {
@@ -221,7 +223,14 @@ export default function DatabasePage() {
           setResults([]);
         } else {
           // Regular SELECT query
-          setResults(Array.isArray(data.data) ? data.data : [data.data]);
+          if (data.data) {
+            const resultArray = Array.isArray(data.data) ? data.data : [data.data];
+            console.log('Setting results:', resultArray); // Debug log
+            setResults(resultArray);
+          } else {
+            console.log('No data in response'); // Debug log
+            setResults([]);
+          }
           setPreviewInfo(null);
         }
         setError(null);
@@ -508,49 +517,56 @@ export default function DatabasePage() {
                 </div>
               )}
             </div>
+          </div>
+        </div>
 
-            {/* Results Display */}
-            {results.length > 0 && (
-              <div className="bg-white rounded-lg p-6 shadow-lg">
-                <div className="flex justify-between items-center mb-4">
-                  <h2 className="text-xl font-bold text-black">
-                    📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
-                  </h2>
-                </div>
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="bg-gray-100">
-                        {Object.keys(results[0] || {}).map((key) => (
-                          <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
-                            {key}
-                          </th>
+        {/* Results Display */}
+        {!loading && !error && !previewInfo && (
+          <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-bold text-black">
+                📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
+              </h2>
+            </div>
+            {results.length === 0 ? (
+              <div className="text-center py-8 text-gray-500">
+                <p>Query executed successfully but returned no rows.</p>
+                <p className="text-sm mt-2">Try a different query or check if the table has data.</p>
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                  <thead>
+                    <tr className="bg-gray-100">
+                      {results[0] && Object.keys(results[0]).map((key) => (
+                        <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
+                          {key}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {results.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-gray-50">
+                        {row && Object.values(row).map((value: any, colIdx) => (
+                          <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
+                            {value === null ? (
+                              <span className="text-gray-400 italic">NULL</span>
+                            ) : typeof value === 'object' ? (
+                              JSON.stringify(value)
+                            ) : (
+                              String(value)
+                            )}
+                          </td>
                         ))}
                       </tr>
-                    </thead>
-                    <tbody>
-                      {results.map((row, idx) => (
-                        <tr key={idx} className="hover:bg-gray-50">
-                          {Object.values(row).map((value: any, colIdx) => (
-                            <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
-                              {value === null ? (
-                                <span className="text-gray-400 italic">NULL</span>
-                              ) : typeof value === 'object' ? (
-                                JSON.stringify(value)
-                              ) : (
-                                String(value)
-                              )}
-                            </td>
-                          ))}
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
+                    ))}
+                  </tbody>
+                </table>
               </div>
             )}
           </div>
-        </div>
+        )}
 
         {/* Available Tables */}
         <div className="bg-white rounded-lg p-6 shadow-lg mb-6">
@@ -683,46 +699,6 @@ export default function DatabasePage() {
           </div>
         </div>
 
-        {/* Results Display */}
-        {results.length > 0 && (
-          <div className="bg-white rounded-lg p-6 shadow-lg">
-            <div className="flex justify-between items-center mb-4">
-              <h2 className="text-xl font-bold text-black">
-                📋 Results ({results.length} {results.length === 1 ? 'row' : 'rows'})
-              </h2>
-            </div>
-            <div className="overflow-x-auto">
-              <table className="w-full border-collapse">
-                <thead>
-                  <tr className="bg-gray-100">
-                    {Object.keys(results[0] || {}).map((key) => (
-                      <th key={key} className="border border-gray-300 px-4 py-2 text-left font-semibold text-black">
-                        {key}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {results.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-gray-50">
-                      {Object.values(row).map((value: any, colIdx) => (
-                        <td key={colIdx} className="border border-gray-300 px-4 py-2 text-gray-700">
-                          {value === null ? (
-                            <span className="text-gray-400 italic">NULL</span>
-                          ) : typeof value === 'object' ? (
-                            JSON.stringify(value)
-                          ) : (
-                            String(value)
-                          )}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        )}
 
         {/* Educational Content */}
         <div className="mt-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg p-6 shadow-lg">
